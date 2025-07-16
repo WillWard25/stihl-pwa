@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>STIHL PDF Viewer with Search</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="manifest.json" />
+</head>
+<body>
+  <h1>STIHL 2025 Product Guide</h1>
+
+  <input type="text" id="searchInput" placeholder="Search..." />
+  <button onclick="searchText()">Search</button>
+
+  <canvas id="pdf-canvas"></canvas>
+
+  <script type="module">
+    import * as pdfjsLib from './pdfjs/pdf.mjs';
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = './pdfjs/pdf.worker.mjs';
+
+    const url = '2025 PIG 3.pdf';
+    let pdfDoc = null;
+    let currentPage = 1;
+    let canvas = document.getElementById('pdf-canvas');
+    let ctx = canvas.getContext('2d');
+
+    function renderPage(num) {
+      pdfDoc.getPage(num).then(page => {
+        const viewport = page.getViewport({ scale: 1.5 });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        page.render(renderContext);
+      });
+    }
+
+    pdfjsLib.getDocument(url).promise.then(pdf => {
+      pdfDoc = pdf;
+      renderPage(currentPage);
+    });
+
+    window.searchText = function () {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        pdfDoc.getPage(i).then(page => {
+          page.getTextContent().then(textContent => {
+            const text = textContent.items.map(item => item.str).join(' ').toLowerCase();
+            if (text.includes(query)) {
+              currentPage = i;
+              renderPage(currentPage);
+            }
+          });
+        });
+      }
+    };
+  </script>
+</body>
+</html>
